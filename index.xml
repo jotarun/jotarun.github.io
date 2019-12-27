@@ -1,0 +1,15 @@
+
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+ <channel>
+   <title>Jotarun&#39;s Blog</title>
+   <link>/</link>
+   <description>Recent content on Jotarun&#39;s Blog</description>
+   <generator>Hugo -- gohugo.io</generator>
+   <language>en-us</language>
+   <copyright>Copyright &amp;copy; 2020 - Jotarun</copyright>
+   
+       <atom:link href="/index.xml" rel="self" type="application/rss+xml" />
+   
+   
+ </channel>
+</rss>
