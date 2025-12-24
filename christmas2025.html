@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merry Christmas</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            background: #0a0a0a;
+            font-family: 'Cinzel', serif;
+        }
+        
+        #title {
+            position: fixed;
+            top: 25px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+        
+        #title .merry {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: clamp(1.8rem, 4.5vw, 3rem);
+            font-weight: 400;
+            font-style: italic;
+            letter-spacing: 0.02em;
+            color: #777;
+            display: block;
+        }
+        
+        #title .christmas {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: clamp(1.4rem, 3.5vw, 2.2rem);
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            color: #666;
+            display: block;
+            margin-top: 4px;
+        }
+        
+        #instructions {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 100;
+            pointer-events: none;
+            color: rgba(100, 100, 100, 0.4);
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            font-family: system-ui, sans-serif;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        #audio-notice {
+            position: fixed;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: transparent;
+            border: 1px solid rgba(80, 80, 80, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: rgba(120, 120, 120, 0.6);
+            font-size: 0.7rem;
+            cursor: pointer;
+            z-index: 100;
+            transition: all 0.3s ease;
+            font-family: system-ui, sans-serif;
+        }
+        
+        #audio-notice:hover {
+            border-color: rgba(100, 100, 100, 0.5);
+            color: rgba(150, 150, 150, 0.8);
+        }
+        
+        #audio-notice.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        /* Hidden YouTube player */
+        #youtube-player {
+            position: fixed;
+            bottom: -1000px;
+            left: -1000px;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="title">
+        <span class="merry">Merry</span>
+        <span class="christmas">Christmas</span>
+    </div>
+    
+    <div id="canvas-container"></div>
+    
+    <div id="instructions">
+        Click to scatter • Click again to form text • Click once more to reform tree • Drag to rotate
+    </div>
+    
+    <div id="audio-notice">🎵 Click anywhere to start music</div>
+    
+    <!-- Hidden YouTube iframe for background music -->
+    <iframe id="youtube-player" 
+            src="" 
+            allow="autoplay; encrypted-media" 
+            allowfullscreen>
+    </iframe>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Audio setup - YouTube background music
+        let audioStarted = false;
+        
+        function startAudio() {
+            if (audioStarted) return;
+            audioStarted = true;
+            document.getElementById('audio-notice').classList.add('hidden');
+            
+            // Load YouTube video with autoplay
+            const player = document.getElementById('youtube-player');
+            player.src = "https://www.youtube.com/embed/2T5I0A8boOU?autoplay=1&loop=1&playlist=2T5I0A8boOU&controls=0";
+        }
+        
+        // Start music on first user interaction (required by browsers for audio)
+        document.addEventListener('click', startAudio, { once: true });
+        document.addEventListener('touchstart', startAudio, { once: true });
+        document.addEventListener('keydown', startAudio, { once: true });
+        
+        // Three.js setup
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0f14);
+        scene.fog = new THREE.Fog(0x0a0f14, 10, 30);
+        
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 2, 12);
+        camera.lookAt(0, 0, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.5;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+        
+        // Add bloom-like effect through post-processing simulation (brighter exposure)
+        renderer.physicallyCorrectLights = true;
+        
+        // Lighting - Optimized for metallic reflections
+        const ambientLight = new THREE.AmbientLight(0x333344, 0.5);
+        scene.add(ambientLight);
+        
+        // Main key light - white for clean metal reflections
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        mainLight.position.set(5, 10, 7);
+        scene.add(mainLight);
+        
+        // Warm fill light - golden tint
+        const fillLight = new THREE.DirectionalLight(0xffeedd, 0.8);
+        fillLight.position.set(-5, 5, -5);
+        scene.add(fillLight);
+        
+        // Golden point light from above
+        const pointLight1 = new THREE.PointLight(0xffd700, 1.5, 25);
+        pointLight1.position.set(0, 6, 3);
+        scene.add(pointLight1);
+        
+        // Warm accent light
+        const pointLight2 = new THREE.PointLight(0xffaa66, 1.0, 20);
+        pointLight2.position.set(-3, 2, 2);
+        scene.add(pointLight2);
+        
+        // Cool rim light for contrast and depth
+        const rimLight = new THREE.PointLight(0x8899bb, 0.5, 25);
+        rimLight.position.set(5, 0, -5);
+        scene.add(rimLight);
+        
+        // Additional warm lights for golden glow
+        const glowLight1 = new THREE.PointLight(0xdaa520, 0.8, 15);
+        glowLight1.position.set(2, 0, 2);
+        scene.add(glowLight1);
+        
+        const glowLight2 = new THREE.PointLight(0xcd853f, 0.6, 15);
+        glowLight2.position.set(-2, 1, 2);
+        scene.add(glowLight2);
+        
+        // ============ SNOW PARTICLES ============
+        const snowCount = 2000;
+        const snowGeometry = new THREE.BufferGeometry();
+        const snowPositions = new Float32Array(snowCount * 3);
+        const snowVelocities = [];
+        
+        for (let i = 0; i < snowCount; i++) {
+            snowPositions[i * 3] = (Math.random() - 0.5) * 40;
+            snowPositions[i * 3 + 1] = Math.random() * 30 - 5;
+            snowPositions[i * 3 + 2] = (Math.random() - 0.5) * 40;
+            
+            snowVelocities.push({
+                x: (Math.random() - 0.5) * 0.01,
+                y: -0.02 - Math.random() * 0.03,
+                z: (Math.random() - 0.5) * 0.01
+            });
+        }
+        
+        snowGeometry.setAttribute('position', new THREE.BufferAttribute(snowPositions, 3));
+        
+        const snowMaterial = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 0.08,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const snow = new THREE.Points(snowGeometry, snowMaterial);
+        scene.add(snow);
+        
+        function updateSnow() {
+            const positions = snow.geometry.attributes.position.array;
+            
+            for (let i = 0; i < snowCount; i++) {
+                positions[i * 3] += snowVelocities[i].x;
+                positions[i * 3 + 1] += snowVelocities[i].y;
+                positions[i * 3 + 2] += snowVelocities[i].z;
+                
+                // Add slight horizontal drift
+                positions[i * 3] += Math.sin(Date.now() * 0.001 + i) * 0.002;
+                
+                // Reset snowflake if it falls below
+                if (positions[i * 3 + 1] < -5) {
+                    positions[i * 3] = (Math.random() - 0.5) * 40;
+                    positions[i * 3 + 1] = 25;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 40;
+                }
+            }
+            
+            snow.geometry.attributes.position.needsUpdate = true;
+        }
+        
+        // ============ METALLIC MATERIALS - Luxurious Metal Look ============
+        // Rich golden metal - like polished gold jewelry
+        const goldMaterial = new THREE.MeshStandardMaterial({
+            color: 0xd4af37,  // Rich gold
+            metalness: 1.0,
+            roughness: 0.15,
+            emissive: 0xb8860b,
+            emissiveIntensity: 0.3,
+            envMapIntensity: 2.5
+        });
+        
+        // Deep red metallic - like ruby or red chrome
+        const redMaterial = new THREE.MeshStandardMaterial({
+            color: 0x8b0000,  // Dark red metal
+            metalness: 1.0,
+            roughness: 0.2,
+            emissive: 0x660000,
+            emissiveIntensity: 0.25,
+            envMapIntensity: 2.0
+        });
+        
+        // Dark green metallic - like emerald or green chrome
+        const greenMaterial = new THREE.MeshStandardMaterial({
+            color: 0x0d5c0d,  // Dark forest green metal
+            metalness: 1.0,
+            roughness: 0.2,
+            emissive: 0x003300,
+            emissiveIntensity: 0.15,
+            envMapIntensity: 2.0
+        });
+        
+        // Bright golden metal - like 24k gold
+        const goldCubeMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffd700,  // Bright gold
+            metalness: 1.0,
+            roughness: 0.1,
+            emissive: 0xdaa520,
+            emissiveIntensity: 0.35,
+            envMapIntensity: 2.5
+        });
+        
+        // ============ TINY GEOMETRIES ============
+        const sphereGeometry = new THREE.SphereGeometry(0.025, 6, 6);  // Tiny spheres
+        const cubeGeometry = new THREE.BoxGeometry(0.035, 0.035, 0.035);  // Tiny cubes
+        const starGeometry = new THREE.OctahedronGeometry(0.25, 0);
+        
+        // Instance counts - increased for denser tree with smaller particles
+        const SPHERE_COUNT = 1200;
+        const CUBE_COUNT = 1300;
+        const TOTAL_COUNT = SPHERE_COUNT + CUBE_COUNT;
+        
+        // Create instanced meshes - More gold particles!
+        const goldSpheres = new THREE.InstancedMesh(sphereGeometry, goldMaterial, Math.floor(SPHERE_COUNT * 0.75)); // 75% gold spheres
+        const redSpheres = new THREE.InstancedMesh(sphereGeometry, redMaterial, Math.floor(SPHERE_COUNT * 0.25));   // 25% red spheres
+        const goldCubes = new THREE.InstancedMesh(cubeGeometry, goldCubeMaterial, Math.floor(CUBE_COUNT * 0.6));    // 60% gold cubes
+        const greenCubes = new THREE.InstancedMesh(cubeGeometry, greenMaterial, Math.floor(CUBE_COUNT * 0.4));      // 40% green cubes
+        
+        // Star at top - Polished gold metal
+        const star = new THREE.Mesh(starGeometry, new THREE.MeshStandardMaterial({
+            color: 0xffd700,  // Gold
+            metalness: 1.0,
+            roughness: 0.05,
+            emissive: 0xdaa520,
+            emissiveIntensity: 0.8
+        }));
+        
+        // Add point light inside star for extra glow
+        const starLight = new THREE.PointLight(0xffd700, 1.5, 8);
+        star.add(starLight);
+        
+        // Group for all objects
+        const treeGroup = new THREE.Group();
+        treeGroup.add(goldSpheres, redSpheres, goldCubes, greenCubes, star);
+        scene.add(treeGroup);
+        
+        // Position data
+        const positions = {
+            tree: [],
+            scattered: [],
+            text: [],
+            current: [],
+            target: [],
+            rotations: [],
+            targetRotations: [],
+            scales: [],
+            baseScales: [],
+            sparklePhase: [], // For random glowing/sparkling
+            sparkleSpeed: [],
+            sparkleDelay: [], // Random delay for sparkle bursts
+            types: [] // 0: gold sphere, 1: red sphere, 2: gold cube, 3: green cube
+        };
+        
+        // Generate tree shape positions
+        function generateTreePositions() {
+            const treePositions = [];
+            const treeHeight = 8;
+            const baseRadius = 3;
+            
+            for (let i = 0; i < TOTAL_COUNT; i++) {
+                const y = Math.random() * treeHeight - 3;
+                const normalizedY = (y + 3) / treeHeight;
+                const radius = baseRadius * (1 - normalizedY * 0.85) * (0.7 + Math.random() * 0.3);
+                const angle = Math.random() * Math.PI * 2;
+                
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                
+                treePositions.push(new THREE.Vector3(x, y, z));
+            }
+            
+            return treePositions;
+        }
+        
+        // Generate scattered positions
+        function generateScatteredPositions() {
+            const scattered = [];
+            for (let i = 0; i < TOTAL_COUNT; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+                const r = 6 + Math.random() * 4;
+                
+                scattered.push(new THREE.Vector3(
+                    r * Math.sin(phi) * Math.cos(theta),
+                    r * Math.cos(phi),
+                    r * Math.sin(phi) * Math.sin(theta)
+                ));
+            }
+            return scattered;
+        }
+        
+        // Generate text positions using canvas to sample real font as dot matrix
+        function generateTextPositions() {
+            const textPositions = [];
+            
+            // Create larger offscreen canvas for better resolution
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 800;
+            canvas.height = 400;
+            
+            // Clear canvas
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw "Merry" in elegant script font - using system fallback for reliability
+            ctx.fillStyle = 'white';
+            ctx.font = 'italic bold 130px Georgia, "Times New Roman", serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Merry', canvas.width / 2, 130);
+            
+            // Draw "Christmas" in matching style
+            ctx.font = 'italic bold 100px Georgia, "Times New Roman", serif';
+            ctx.fillText('Christmas', canvas.width / 2, 275);
+            
+            // Sample pixels from canvas to create dot matrix
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+            
+            const sampledPoints = [];
+            const sampleStep = 2; // Sample every 2 pixels for higher density
+            
+            for (let y = 0; y < canvas.height; y += sampleStep) {
+                for (let x = 0; x < canvas.width; x += sampleStep) {
+                    const i = (y * canvas.width + x) * 4;
+                    const brightness = pixels[i]; // Red channel (white text = 255)
+                    
+                    if (brightness > 100) {
+                        // Convert canvas coords to 3D world coords - larger spread
+                        const worldX = (x - canvas.width / 2) / canvas.width * 14;
+                        const worldY = -(y - canvas.height / 2) / canvas.height * 7;
+                        sampledPoints.push({ x: worldX, y: worldY, brightness });
+                    }
+                }
+            }
+            
+            // Shuffle sampled points for random distribution
+            for (let i = sampledPoints.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [sampledPoints[i], sampledPoints[j]] = [sampledPoints[j], sampledPoints[i]];
+            }
+            
+            // Create positions from sampled points with minimal randomness for cleaner text
+            let pointIndex = 0;
+            const particlesPerSample = Math.ceil(TOTAL_COUNT / sampledPoints.length);
+            
+            for (const point of sampledPoints) {
+                for (let p = 0; p < particlesPerSample; p++) {
+                    if (pointIndex < TOTAL_COUNT) {
+                        textPositions.push(new THREE.Vector3(
+                            point.x + (Math.random() - 0.5) * 0.04,
+                            point.y + (Math.random() - 0.5) * 0.04,
+                            (Math.random() - 0.5) * 0.06
+                        ));
+                        pointIndex++;
+                    }
+                }
+            }
+            
+            // Fill any remaining with subtle sparkle positions around text
+            while (textPositions.length < TOTAL_COUNT) {
+                textPositions.push(new THREE.Vector3(
+                    (Math.random() - 0.5) * 12,
+                    (Math.random() - 0.5) * 6,
+                    (Math.random() - 0.5) * 0.3
+                ));
+            }
+            
+            return textPositions;
+        }
+        
+        // Initialize positions
+        function initPositions() {
+            positions.tree = generateTreePositions();
+            positions.scattered = generateScatteredPositions();
+            positions.text = generateTextPositions();
+            
+            for (let i = 0; i < TOTAL_COUNT; i++) {
+                positions.current.push(positions.tree[i].clone());
+                positions.target.push(positions.tree[i].clone());
+                positions.rotations.push(new THREE.Euler(
+                    Math.random() * Math.PI * 2,
+                    Math.random() * Math.PI * 2,
+                    Math.random() * Math.PI * 2
+                ));
+                positions.targetRotations.push(new THREE.Euler(
+                    Math.random() * Math.PI * 2,
+                    Math.random() * Math.PI * 2,
+                    Math.random() * Math.PI * 2
+                ));
+                const baseScale = 0.4 + Math.random() * 0.4;
+                positions.scales.push(baseScale);
+                positions.baseScales.push(baseScale);
+                positions.sparklePhase.push(Math.random() * Math.PI * 2);
+                positions.sparkleSpeed.push(0.5 + Math.random() * 2.0); // Natural sparkle speed
+                positions.sparkleDelay.push(Math.random() * 10); // Random delay for sparkle bursts
+                
+                // Assign types - More gold particles!
+                if (i < Math.floor(SPHERE_COUNT * 0.75)) {
+                    positions.types.push(0); // gold sphere (75%)
+                } else if (i < SPHERE_COUNT) {
+                    positions.types.push(1); // red sphere (25%)
+                } else if (i < SPHERE_COUNT + Math.floor(CUBE_COUNT * 0.6)) {
+                    positions.types.push(2); // gold cube (60%)
+                } else {
+                    positions.types.push(3); // green cube (40%)
+                }
+            }
+        }
+        
+        // Update instanced meshes
+        const dummy = new THREE.Object3D();
+        
+        function updateMeshes() {
+            let goldSphereIndex = 0;
+            let redSphereIndex = 0;
+            let goldCubeIndex = 0;
+            let greenCubeIndex = 0;
+            
+            for (let i = 0; i < TOTAL_COUNT; i++) {
+                dummy.position.copy(positions.current[i]);
+                dummy.rotation.copy(positions.rotations[i]);
+                dummy.scale.setScalar(positions.scales[i]);
+                dummy.updateMatrix();
+                
+                switch (positions.types[i]) {
+                    case 0:
+                        if (goldSphereIndex < goldSpheres.count) {
+                            goldSpheres.setMatrixAt(goldSphereIndex++, dummy.matrix);
+                        }
+                        break;
+                    case 1:
+                        if (redSphereIndex < redSpheres.count) {
+                            redSpheres.setMatrixAt(redSphereIndex++, dummy.matrix);
+                        }
+                        break;
+                    case 2:
+                        if (goldCubeIndex < goldCubes.count) {
+                            goldCubes.setMatrixAt(goldCubeIndex++, dummy.matrix);
+                        }
+                        break;
+                    case 3:
+                        if (greenCubeIndex < greenCubes.count) {
+                            greenCubes.setMatrixAt(greenCubeIndex++, dummy.matrix);
+                        }
+                        break;
+                }
+            }
+            
+            goldSpheres.instanceMatrix.needsUpdate = true;
+            redSpheres.instanceMatrix.needsUpdate = true;
+            goldCubes.instanceMatrix.needsUpdate = true;
+            greenCubes.instanceMatrix.needsUpdate = true;
+            
+            // Update star position
+            star.position.set(0, 5.2, 0);
+            star.rotation.y += 0.02;
+        }
+        
+        initPositions();
+        
+        // State management
+        let currentState = 'tree'; // 'tree', 'scattered', 'text'
+        let isTransitioning = false;
+        let mouseDown = false;
+        let mouseDownTime = 0;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let isDragging = false;
+        let autoRotate = true;
+        
+        // Transition to new state
+        function transitionTo(state) {
+            if (isTransitioning) return;
+            
+            isTransitioning = true;
+            autoRotate = state === 'tree';
+            
+            let targetPositions;
+            switch (state) {
+                case 'tree':
+                    targetPositions = positions.tree;
+                    star.visible = true;
+                    break;
+                case 'scattered':
+                    targetPositions = positions.scattered;
+                    star.visible = false;
+                    break;
+                case 'text':
+                    targetPositions = positions.text;
+                    star.visible = false;
+                    break;
+            }
+            
+            for (let i = 0; i < TOTAL_COUNT; i++) {
+                positions.target[i].copy(targetPositions[i]);
+                positions.targetRotations[i].set(
+                    Math.random() * Math.PI * 2,
+                    Math.random() * Math.PI * 2,
+                    Math.random() * Math.PI * 2
+                );
+            }
+            
+            currentState = state;
+            
+            setTimeout(() => {
+                isTransitioning = false;
+            }, 2000);
+        }
+        
+        // Handle click
+        function handleClick() {
+            switch (currentState) {
+                case 'tree':
+                    transitionTo('scattered');
+                    break;
+                case 'scattered':
+                    transitionTo('text');
+                    break;
+                case 'text':
+                    transitionTo('tree');
+                    break;
+            }
+        }
+        
+        // Mouse events
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            mouseDownTime = Date.now();
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            isDragging = false;
+            startAudio();
+        });
+        
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (mouseDown) {
+                const deltaX = e.clientX - lastMouseX;
+                const deltaY = e.clientY - lastMouseY;
+                
+                if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                    isDragging = true;
+                    autoRotate = false;
+                    treeGroup.rotation.y += deltaX * 0.01;
+                    treeGroup.rotation.x += deltaY * 0.005;
+                    treeGroup.rotation.x = Math.max(-0.5, Math.min(0.5, treeGroup.rotation.x));
+                }
+                
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            }
+        });
+        
+        renderer.domElement.addEventListener('mouseup', () => {
+            if (!isDragging && Date.now() - mouseDownTime < 300) {
+                handleClick();
+            }
+            mouseDown = false;
+        });
+        
+        // Touch events
+        renderer.domElement.addEventListener('touchstart', (e) => {
+            mouseDown = true;
+            mouseDownTime = Date.now();
+            lastMouseX = e.touches[0].clientX;
+            lastMouseY = e.touches[0].clientY;
+            isDragging = false;
+            startAudio();
+        });
+        
+        renderer.domElement.addEventListener('touchmove', (e) => {
+            if (mouseDown && e.touches.length === 1) {
+                const deltaX = e.touches[0].clientX - lastMouseX;
+                const deltaY = e.touches[0].clientY - lastMouseY;
+                
+                if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                    isDragging = true;
+                    autoRotate = false;
+                    treeGroup.rotation.y += deltaX * 0.01;
+                    treeGroup.rotation.x += deltaY * 0.005;
+                    treeGroup.rotation.x = Math.max(-0.5, Math.min(0.5, treeGroup.rotation.x));
+                }
+                
+                lastMouseX = e.touches[0].clientX;
+                lastMouseY = e.touches[0].clientY;
+            }
+            e.preventDefault();
+        }, { passive: false });
+        
+        renderer.domElement.addEventListener('touchend', () => {
+            if (!isDragging && Date.now() - mouseDownTime < 300) {
+                handleClick();
+            }
+            mouseDown = false;
+        });
+        
+        // Window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = Date.now() * 0.001;
+            
+            // Update snow
+            updateSnow();
+            
+            // Auto rotate
+            if (autoRotate && !mouseDown) {
+                treeGroup.rotation.y += 0.003;
+            }
+            
+            // Smooth position transitions with sparkle effects
+            for (let i = 0; i < TOTAL_COUNT; i++) {
+                positions.current[i].lerp(positions.target[i], 0.03);
+                
+                // Smooth rotation
+                positions.rotations[i].x += (positions.targetRotations[i].x - positions.rotations[i].x) * 0.02;
+                positions.rotations[i].y += (positions.targetRotations[i].y - positions.rotations[i].y) * 0.02;
+                positions.rotations[i].z += (positions.targetRotations[i].z - positions.rotations[i].z) * 0.02;
+                
+                // Continuous slow rotation for cubes
+                if (positions.types[i] >= 2) {
+                    positions.rotations[i].y += 0.005;
+                }
+                
+                // Natural sparkle/glow effect with visible variation
+                const sparkle = Math.sin(time * positions.sparkleSpeed[i] + positions.sparklePhase[i]);
+                const sparkle2 = Math.sin(time * positions.sparkleSpeed[i] * 0.6 + positions.sparklePhase[i] * 1.5);
+                const combinedSparkle = (sparkle + sparkle2 * 0.6) / 1.4;
+                const sparkleIntensity = 0.25; // More visible intensity
+                positions.scales[i] = positions.baseScales[i] * (1 + combinedSparkle * sparkleIntensity);
+                
+                // Periodic bright sparkle bursts - like twinkling stars
+                const burstCycle = Math.sin(time * 0.3 + positions.sparkleDelay[i]);
+                if (burstCycle > 0.97) {
+                    positions.scales[i] = positions.baseScales[i] * (1.5 + Math.random() * 0.5);
+                }
+                
+                // Random sparkle twinkle
+                if (Math.random() < 0.002) {
+                    positions.scales[i] = positions.baseScales[i] * 2.0;
+                }
+            }
+            
+            updateMeshes();
+            
+            // Subtle light breathing
+            pointLight1.intensity = 1.0 + Math.sin(time * 0.5) * 0.15;
+            pointLight2.intensity = 0.5 + Math.sin(time * 0.4 + 1) * 0.1;
+            
+            // Very subtle emissive variation
+            goldMaterial.emissiveIntensity = 0.35 + Math.sin(time * 0.8) * 0.08;
+            redMaterial.emissiveIntensity = 0.4 + Math.sin(time * 0.6 + 1) * 0.08;
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        // Click on audio notice to start
+        document.getElementById('audio-notice').addEventListener('click', startAudio);
+    </script>
+</body>
+</html>
